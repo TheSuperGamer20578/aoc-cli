@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["TheSuperGamer20578"]
 description = "A CLI for running Advent of Code solutions."
+license = "GPL-3"
 
 [[bin]]
 name = "aoc"
