@@ -1,13 +1,12 @@
-use std::io;
-use std::io::Write;
 use anyhow::Result;
-use rpassword::read_password;
+use dialoguer::Password;
+use tracing::info;
 use crate::Config;
 
 pub fn token(config: &mut Config) -> Result<()> {
-    print!("Enter your session token: ");
-    io::stdout().flush()?;
-    config.token = Some(read_password()?);
-    println!("Token saved!");
+    config.token = Some(Password::new()
+        .with_prompt("Enter your session token")
+        .interact()?);
+    info!("Token saved!");
     Ok(())
 }

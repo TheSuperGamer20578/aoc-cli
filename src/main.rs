@@ -3,13 +3,20 @@
 mod api;
 mod commands;
 mod python;
+mod display;
+mod value_enum;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::process::exit;
 use clap::{Parser, Subcommand};
 use anyhow::{bail, Result};
+use clap_verbosity_flag::{InfoLevel, Verbosity};
 use serde::{Deserialize, Serialize};
+use tracing::{error, trace};
+use tracing_log::AsTrace;
 use crate::api::Submission;
+use crate::display::Logger;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct Config {
@@ -94,6 +101,8 @@ impl Default for PartStatus {
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
 struct Args {
+    #[clap(flatten)]
+    verbose: Verbosity<InfoLevel>,
     #[clap(subcommand)]
     command: Command,
 }
@@ -131,8 +140,17 @@ enum Command {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() {
+    if let Err(err) = _main().await {
+        error!(root_cause = err.root_cause(), "{err}");
+        trace!("Error details:\n\n{err:?}");
+        exit(1);
+    }
+}
+
+async fn _main() -> Result<()> {
     let args = Args::parse();
+    Logger::new(args.verbose.log_level_filter().as_trace()).init()?;
     let mut config: Config = confy::load(env!("CARGO_CRATE_NAME"), None)?;
     if config.token.is_none() && !matches!(args.command, Command::Token) {
         bail!("No token set. Use `aoc token` to set your session token.");

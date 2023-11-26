@@ -1,7 +1,7 @@
 use std::sync::RwLock;
-use pyo3::{Py, PyAny, pyfunction, pymodule, PyResult, Python, wrap_pyfunction};
+use pyo3::{Py, PyAny, pyfunction, PyResult, Python};
 use pyo3::exceptions::PyTypeError;
-use pyo3::types::{PyCFunction, PyModule};
+use pyo3::types::PyCFunction;
 use lazy_static::lazy_static;
 
 #[derive(Debug, Clone)]

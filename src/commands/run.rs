@@ -3,10 +3,12 @@ use std::sync::RwLock;
 use anyhow::Result;
 use futures::future::try_join_all;
 use glob::glob;
+use indicatif::ProgressIterator;
 use pyo3::{append_to_inittab, prepare_freethreaded_python, Python};
 use pyo3::types::PyModule;
 use crate::api;
 use crate::Config;
+use crate::display::{ActionType, FormatTraceBack, progress_bar};
 use crate::python::aoc;
 use crate::python::solutions::{Solution, SOLUTIONS};
 
@@ -22,11 +24,13 @@ async fn get_input<'s>(config: &Config, solution: &'s Solution, new_inputs: &RwL
 pub async fn run(config: &mut Config, year: Option<u16>, day: Option<u8>, part: Option<u8>) -> Result<()> {
     append_to_inittab!(aoc);
     prepare_freethreaded_python();
-    let files = glob("./**/*.py")?;
+    let files: Vec<_> = glob("./**/*.py")?.collect();
+    let bar = progress_bar("Importing".to_string(), ActionType::Prepare, files.len() as u64)?;
     Python::with_gil(|py| -> Result<()> {
-        for file in files {
+        for file in files.into_iter().progress_with(bar.clone()) {
             let file = file?;
-            PyModule::from_code(py, &read_to_string(&file)?, &file.display().to_string(), "__aoc__")?;
+            bar.set_message(file.display().to_string());
+            PyModule::from_code(py, &read_to_string(&file)?, &file.display().to_string(), "__aoc__").tb()?;
         }
         Ok(())
     })?;
@@ -65,7 +69,7 @@ pub async fn run(config: &mut Config, year: Option<u16>, day: Option<u8>, part: 
 
     Python::with_gil(|py| -> Result<()> {
         for (solution, input) in solutions {
-            let result = solution.function.call1(py, (input,))?;
+            let result = solution.function.call1(py, (input,)).tb()?;
             println!("{} day {} part {}: {result}", solution.year, solution.day, solution.part);
         }
         Ok(())
