@@ -1,6 +1,9 @@
 # AoC CLI
-A CLI tool for running Advent of Code solutions in Python.
+A CLI for running Advent of Code solutions.
 
+
+## Installation
+AoC CLI is currentlt in development and is not yet available to download.
 
 ## Quickstart
 ### Authentication
