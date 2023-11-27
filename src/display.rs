@@ -61,6 +61,12 @@ pub fn spinner(action: String, action_type: ActionType, message: String) -> Resu
     Ok(bar)
 }
 
+pub fn confirm(prompt: impl Into<String>) -> Result<bool> {
+    Ok(PROGRESS.suspend(|| dialoguer::Confirm::new()
+        .with_prompt(prompt)
+        .interact())?)
+}
+
 value_enum! {
     #[derive(Copy, Clone, Debug)]
     pub enum ActionType: Style {

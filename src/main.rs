@@ -124,9 +124,12 @@ enum Command {
         day: Option<u8>,
         /// Only run the given part of the solution
         part: Option<u8>,
-        /// Submit submitted solutions
+        /// Submit solutions
         #[clap(long)]
         submit: bool,
+        /// Submit known incorrect solutions
+        #[clap(long)]
+        disable_submit_safety: bool,
     },
     /// Creates a new solution from a template
     New {
@@ -158,7 +161,13 @@ async fn _main() -> Result<()> {
     match args.command {
         Command::Trust { .. } => todo!(),
         Command::Token => commands::token(&mut config)?,
-        Command::Run { year, day, part, .. } => commands::run(&mut config, year, day, part).await?,
+        Command::Run {
+            year,
+            day,
+            part,
+            submit,
+            disable_submit_safety
+        } => commands::run(&mut config, year, day, part, submit, disable_submit_safety).await?,
         Command::New { .. } => todo!(),
     }
     confy::store(env!("CARGO_CRATE_NAME"), None, config)?;

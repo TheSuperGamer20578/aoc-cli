@@ -1,5 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use crate::{Config, Day, PartStatus};
 
@@ -19,18 +20,16 @@ pub async fn get_input(config: &Config, year: u16, day: u8) -> Result<String> {
     Ok(resp)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum SubmitResult {
     Accepted,
     WrongAnswer(WrongAnswerReason),
-    TooFast,
-    AlreadySolved,
-    ManualSubmissionRequired,
-    Locked,
-    Unknown,
+    TooSoon(String),
+    Invalid,
+    Unknown(String),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum WrongAnswerReason {
     TooHigh,
     TooLow,
@@ -39,10 +38,9 @@ pub enum WrongAnswerReason {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Submission {
-    timestamp: DateTime<Utc>,
-    answer: String,
-    response: String,
-    result: SubmitResult,
+    pub timestamp: DateTime<Utc>,
+    pub answer: String,
+    pub result: SubmitResult,
 }
 
 pub async fn submit<'c>(config: &'c mut Config, year: u16, day: u8, part: u8, answer: &str) -> Result<&'c Submission> {
@@ -63,22 +61,8 @@ pub async fn submit<'c>(config: &'c mut Config, year: u16, day: u8, part: u8, an
         .send().await?
         .error_for_status()?
         .text().await?;
-    let result = match resp.as_str() {
-        "That's the right answer!" => SubmitResult::Accepted,
-        "That's not the right answer." => SubmitResult::WrongAnswer(WrongAnswerReason::None),
-        "That's not the right answer; your answer is too low." => SubmitResult::WrongAnswer(WrongAnswerReason::TooLow),
-        "That's not the right answer; your answer is too high." => SubmitResult::WrongAnswer(WrongAnswerReason::TooHigh),
-        "You gave an answer too recently; you have to wait before trying again." => SubmitResult::TooFast,
-        "You don't seem to be solving the right level; did you already complete it?" => SubmitResult::AlreadySolved,
-        _ => SubmitResult::Unknown,
-    };
 
-    let submission = Submission {
-        timestamp: Utc::now(),
-        answer: answer.to_string(),
-        response: resp,
-        result,
-    };
+    let submission = parse_submit_response(&resp, answer);
 
     let PartStatus::Active { min, max, incorrect } = &mut data.status else { unreachable!() };
     match submission.result {
@@ -116,4 +100,97 @@ pub async fn submit<'c>(config: &'c mut Config, year: u16, day: u8, part: u8, an
     data.submissions.push(submission);
 
     Ok(data.submissions.last().unwrap())
+}
+
+fn parse_submit_response(resp: &str, answer: &str) -> Submission {
+    let document = Html::parse_document(resp);
+    let message = document.select(&Selector::parse("main > article").unwrap()).next().unwrap();  // TODO: Error handling
+    let text = message.text().collect::<Vec<_>>().join("");
+    let result = if text.contains("That's the right answer!") {
+        SubmitResult::Accepted
+    } else if text.contains("That's not the right answer") {
+        let reason = if text.contains("too high") {
+            WrongAnswerReason::TooHigh
+        } else if text.contains("too low") {
+            WrongAnswerReason::TooLow
+        } else {
+            WrongAnswerReason::None
+        };
+        SubmitResult::WrongAnswer(reason)
+    } else if text.contains("You gave an answer too recently") {
+        let time = text
+            .split("You have ")
+            .nth(1).unwrap()
+            .split(" left to wait.")
+            .next().unwrap();
+        SubmitResult::TooSoon(time.into())
+    } else if text.contains("You don't seem to be solving the right level") {
+        SubmitResult::Invalid
+    } else {
+        SubmitResult::Unknown(text)
+    };
+    Submission {
+        timestamp: Utc::now(),
+        answer: answer.to_string(),
+        result,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    macro_rules! test_parse_submit_response {
+        ($name:ident, $file:literal, $answer:literal => $result:expr) => {
+            #[test]
+            fn $name() {
+                let submission = parse_submit_response(include_str!($file), $answer);
+                assert_eq!(submission.answer, $answer);
+                assert_eq!(submission.result, $result);
+            }
+        };
+    }
+
+    #[test]
+    fn test_url() {
+        assert_eq!(url(2023, 1), "https://adventofcode.com/2023/day/1");
+    }
+
+    test_parse_submit_response!(
+        test_parse_submit_response_accepted,
+        "../test_data/success.html",
+        "123"
+        => SubmitResult::Accepted
+    );
+    test_parse_submit_response!(
+        test_parse_submit_too_high,
+        "../test_data/too_high.html",
+        "123"
+        => SubmitResult::WrongAnswer(WrongAnswerReason::TooHigh)
+    );
+    // TODO: Get test data for this
+    // test_parse_submit_response!(
+    //     test_parse_submit_too_low,
+    //     "../test_data/too_low.html",
+    //     "123"
+    //     => SubmitResult::WrongAnswer(WrongAnswerReason::TooLow)
+    // );
+    test_parse_submit_response!(
+        test_parse_submit_response_incorrect,
+        "../test_data/incorrect.html",
+        "123"
+        => SubmitResult::WrongAnswer(WrongAnswerReason::None)
+    );
+    test_parse_submit_response!(
+        test_parse_submit_too_soon,
+        "../test_data/too_soon.html",
+        "123"
+        => SubmitResult::TooSoon("58s".into())
+    );
+    test_parse_submit_response!(
+        test_parse_submit_response_already_solved,
+        "../test_data/already_solved.html",
+        "123"
+        => SubmitResult::Invalid
+    );
 }
