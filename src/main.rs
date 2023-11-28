@@ -7,10 +7,11 @@ mod display;
 mod value_enum;
 
 use std::collections::HashMap;
+use std::env::current_dir;
 use std::path::PathBuf;
 use std::process::exit;
 use clap::{Parser, Subcommand};
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 use serde::{Deserialize, Serialize};
 use tracing::{error, trace};
@@ -155,11 +156,22 @@ async fn _main() -> Result<()> {
     let args = Args::parse();
     Logger::new(args.verbose.log_level_filter().as_trace()).init()?;
     let mut config: Config = confy::load(env!("CARGO_CRATE_NAME"), None)?;
+    let cwd = current_dir()?;
+    let Some(base_dir) = config.trusted_dirs.iter()
+        .find(|dir| cwd.starts_with(dir))
+    else {
+        if let Command::Trust { dir } = args.command {
+            commands::trust(&mut config, &dir)?;
+            confy::store(env!("CARGO_CRATE_NAME"), None, config)?;
+            return Ok(());
+        }
+        bail!("Current directory is not trusted. Use `aoc trust <dir>` to trust the current directory.");
+    };
     if config.token.is_none() && !matches!(args.command, Command::Token) {
         bail!("No token set. Use `aoc token` to set your session token.");
     }
     match args.command {
-        Command::Trust { .. } => todo!(),
+        Command::Trust { dir } => commands::trust(&mut config, &dir)?,
         Command::Token => commands::token(&mut config)?,
         Command::Run {
             year,

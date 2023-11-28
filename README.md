@@ -6,14 +6,6 @@ A CLI for running Advent of Code solutions.
 AoC CLI is currentlt in development and is not yet available to download.
 
 ## Quickstart
-### Authentication
-The CLI requires an AoC session cookie to be set in the environment.
-The token can be obtained from the application tab of your browser's developer tools.
-To set the token, run the following command and paste the token when prompted:
-```shell
-aoc token
-````
-
 ### Trusting a directory
 Because the CLI will run all Python files in a directory and subdirectories,
 it is important to only run the CLI in a directory you trust.
@@ -22,12 +14,20 @@ been trusted.
 To trust a directory, run the following command,
 replacing `<dir>` with the directory you want to trust:
 ```shell
-aoc trust add <dir>
+aoc trust <dir>
 ```
-> [!CAUTION]
+> [!WARNING]
 > Only trust directories you trust.
 > Trusting malicious directories or directories containing malicious directories
 > will result in arbitrary code execution.
+
+### Authentication
+The CLI requires an AoC session cookie to be set in the environment.
+The token can be obtained from the application tab of your browser's developer tools.
+To set the token, run the following command and paste the token when prompted:
+```shell
+aoc token
+````
 
 ### Writing a solution
 When running through the CLI, you have access to the `aoc` module,
