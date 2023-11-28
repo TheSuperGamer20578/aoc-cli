@@ -3,7 +3,10 @@ A CLI for running Advent of Code solutions.
 
 
 ## Installation
-AoC CLI is currentlt in development and is not yet available to download.
+AoC CLI can be installed with Cargo using the following command:
+```shell
+cargo install --git https://github.com/TheSuperGamer20578/aoc-cli
+```
 
 ## Quickstart
 ### Trusting a directory
@@ -27,7 +30,7 @@ The token can be obtained from the application tab of your browser's developer t
 To set the token, run the following command and paste the token when prompted:
 ```shell
 aoc token
-````
+```
 
 ### Writing a solution
 When running through the CLI, you have access to the `aoc` module,
