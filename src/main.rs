@@ -11,7 +11,7 @@ use std::env::current_dir;
 use std::path::PathBuf;
 use std::process::exit;
 use clap::{Parser, Subcommand};
-use anyhow::{anyhow, bail, Result};
+use anyhow::{ bail, Result};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 use serde::{Deserialize, Serialize};
 use tracing::{error, trace};
@@ -31,13 +31,7 @@ impl Config {
         self.days.get(&year)?.get(&day)?.input.clone()
     }
 
-    pub fn day(&mut self, year: u16, day: u8) -> &Day {
-        self.days
-            .entry(year).or_default()
-            .entry(day).or_insert(Day::new(year, day))
-    }
-
-    pub fn day_mut(&mut self, year: u16, day: u8) -> &mut Day {
+    pub fn day(&mut self, year: u16, day: u8) -> &mut Day {
         self.days
             .entry(year).or_default()
             .entry(day).or_insert(Day::new(year, day))
@@ -135,11 +129,15 @@ enum Command {
     /// Creates a new solution from a template
     New {
         /// The template to use for the new solution
-        template: PathBuf,
+        template: String,
+        /// The path to create the new solution at
+        file: PathBuf,
         /// The year to create a new solution for
-        year: u16,
+        year: Option<u16>,
         /// The day to create a new solution for
-        day: u8,
+        day: Option<u8>,
+        /// The part to create a new solution for
+        part: Option<u8>,
     },
 }
 
@@ -180,7 +178,13 @@ async fn _main() -> Result<()> {
             submit,
             disable_submit_safety
         } => commands::run(&mut config, year, day, part, submit, disable_submit_safety).await?,
-        Command::New { .. } => todo!(),
+        Command::New {
+            template,
+            file,
+            year,
+            day,
+            part
+        } => commands::new(base_dir, template, &file, year, day, part).await?,
     }
     confy::store(env!("CARGO_CRATE_NAME"), None, config)?;
     Ok(())

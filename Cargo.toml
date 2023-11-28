@@ -20,7 +20,6 @@ pyo3 = "0.20.0"
 reqwest = "0.11.22"
 serde = { version = "1.0.193", features = ["derive"] }
 tokio = { version = "1.34.0", features = ["full"] }
-twig = "0.1.0"
 lazy_static = { version = "1.4.0", features = [] }
 futures = "0.3.29"
 console = "0.15.7"
@@ -31,3 +30,4 @@ tracing = "0.1.40"
 tracing-log = "0.2.0"
 crossbeam = "0.8.2"
 scraper = "0.18.1"
+tera = "1.19.1"

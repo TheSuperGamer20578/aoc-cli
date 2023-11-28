@@ -65,7 +65,7 @@ pub async fn run(config: &mut Config, year: Option<u16>, day: Option<u8>, part: 
         .map(|solution| get_input(config, solution, &new_inputs))
     ).await?;
     for (year, day, input) in new_inputs.into_inner().unwrap() {
-        config.day_mut(year, day).input = Some(input);
+        config.day(year, day).input = Some(input);
     }
 
     let bar = progress_bar("Running".to_string(), ActionType::Progress, solutions.len() as u64)?;
@@ -76,7 +76,7 @@ pub async fn run(config: &mut Config, year: Option<u16>, day: Option<u8>, part: 
             let result: String = solution.function.call1(py, (input, )).tb()?.getattr(py, "__str__")?.call0(py)?.extract(py)?;
             Ok((identifier, result))
         })?;
-        match &config.day_mut(solution.year, solution.day).part(solution.part).status {
+        match &config.day(solution.year, solution.day).part(solution.part).status {
             PartStatus::Active { min, max, incorrect } => {
                 if incorrect.contains(&result) && !disable_submit_safety {
                     println(

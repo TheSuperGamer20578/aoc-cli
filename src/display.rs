@@ -21,14 +21,6 @@ lazy_static! {
     static ref PROGRESS: MultiProgress = MultiProgress::new();
 }
 
-macro_rules! println_safe {
-    ($($arg:tt)*) => {
-        $crate::display::PROGRESS.suspend(|| {
-            println!($($arg)*);
-        });
-    };
-}
-
 macro_rules! eprintln_safe {
     ($($arg:tt)*) => {
         $crate::display::PROGRESS.suspend(|| {

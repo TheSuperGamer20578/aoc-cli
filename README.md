@@ -56,3 +56,53 @@ To run solutions, run the following command in a trusted directory:
 aoc run [year] [day] [part]
 ```
 If the year, day, or part is omitted, all solutions for what is provided will be run.
+
+## Templates
+Tera templates are supported to quickly generate solution files.
+Templates are stored in the `templates` directory under the trusted directory.
+The following variables are available:
+
+| Variable | Description                    |
+|----------|--------------------------------|
+| `year`   | The year of the solution       |
+| `day`    | The day of the solution        |
+| `part`   | The part of the solution       |
+| `url`    | The url to the problem's page  |
+
+The following is an example of a template:
+```python
+"""{{ url }}"""
+from aoc import *
+
+
+@solution({{ year }}, {{ day }}, 1)
+def part1(data: str):
+    ...
+
+
+@solution({{ year }}, {{ day }}, 2)
+def part2(data: str):
+    ...
+```
+To render a template, run the following command:
+```shell
+aoc new <template> <file> [year] [day] [part]
+```
+This will render the template at `templates/<template>.tera` to `<file>`.
+If the year, day or part is omitted, they will render as ellipses (`...`).
+The template above would render to the following
+with a year of 2023, and a day of 1:
+```python
+"""https://adventofcode.com/2023/day/1"""
+from aoc import *
+
+
+@solution(2023, 1, 1)
+def part1(data: str):
+    ...
+
+
+@solution(2023, 1, 2)
+def part2(data: str):
+    ...
+```
