@@ -6,6 +6,7 @@ use glob::glob;
 use indicatif::ProgressIterator;
 use pyo3::{append_to_inittab, prepare_freethreaded_python, Python};
 use pyo3::types::PyModule;
+use tracing::{error, warn};
 use crate::{api, PartStatus};
 use crate::api::{SubmitResult, WrongAnswerReason};
 use crate::Config;
@@ -26,12 +27,16 @@ pub async fn run(config: &mut Config, year: Option<u16>, day: Option<u8>, part: 
     append_to_inittab!(aoc);
     prepare_freethreaded_python();
     let files: Vec<_> = glob("./**/*.py")?.collect();
+    let mut import_failures = 0u16;
     let bar = progress_bar("Importing".to_string(), ActionType::Prepare, files.len() as u64)?;
     Python::with_gil(|py| -> Result<()> {
         for (i, file) in files.into_iter().enumerate().progress_with(bar.clone()) {
             let file = file?;
             bar.set_message(file.display().to_string());
-            PyModule::from_code(py, &read_to_string(&file)?, &file.display().to_string(), &format!("aoc_{i}")).tb()?;
+            if let Err(error) = PyModule::from_code(py, &read_to_string(&file)?, &file.display().to_string(), &format!("aoc_{i}")).tb() {
+                error!("Failed to import {}\n\n{error}", file.display());
+                import_failures += 1;
+            }
         }
         Ok(())
     })?;
@@ -68,14 +73,33 @@ pub async fn run(config: &mut Config, year: Option<u16>, day: Option<u8>, part: 
         config.day(year, day).input = Some(input);
     }
 
+    let mut failures = 0u16;
+    let mut skips = 0u16;
     let bar = progress_bar("Running".to_string(), ActionType::Progress, solutions.len() as u64)?;
     for (solution, input) in solutions {
         let (identifier, result) = Python::with_gil(|py| -> Result<_> {
             let identifier = format!("{} day {} part {} ({})", solution.year, solution.day, solution.part, solution.function.getattr(py, "__name__")?);
             bar.set_message(identifier.clone());
-            let result: String = solution.function.call1(py, (input, )).tb()?.getattr(py, "__str__")?.call0(py)?.extract(py)?;
-            Ok((identifier, result))
+            let result = match solution.function.call1(py, (input, )).tb() {
+                Ok(result) => result,
+                Err(error) => {
+                    error!("{identifier}: Failed to run solution:\n\n{error}");
+                    failures += 1;
+                    return Ok((identifier, None));
+                }
+            };
+            let result: String = result.getattr(py, "__str__")?.call0(py)?.extract(py)?;
+            Ok((identifier, Some(result)))
         })?;
+        let Some(result) = result else {
+            println(
+                "Skipped",
+                ActionType::Warning,
+                identifier,
+            );
+            skips += 1;
+            continue;
+        };
         match &config.day(solution.year, solution.day).part(solution.part).status {
             PartStatus::Active { min, max, incorrect } => {
                 if incorrect.contains(&result) && !disable_submit_safety {
@@ -180,6 +204,16 @@ pub async fn run(config: &mut Config, year: Option<u16>, day: Option<u8>, part: 
             }
         }
         bar.inc(1);
+    }
+    if import_failures > 0 {
+        warn!("{import_failures} solution{} failed to import", if import_failures != 1 {"s"} else {""});
+    }
+    if failures > 0 {
+        warn!("{failures} solution{} failed", if failures != 1 {"s"} else {""});
+    }
+    let skips = skips - failures;
+    if skips > 0 {
+        warn!("{skips} solution{} were skipped", if skips != 1 {"s"} else {""});
     }
 
     Ok(())
