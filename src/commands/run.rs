@@ -28,10 +28,10 @@ pub async fn run(config: &mut Config, year: Option<u16>, day: Option<u8>, part: 
     let files: Vec<_> = glob("./**/*.py")?.collect();
     let bar = progress_bar("Importing".to_string(), ActionType::Prepare, files.len() as u64)?;
     Python::with_gil(|py| -> Result<()> {
-        for file in files.into_iter().progress_with(bar.clone()) {
+        for (i, file) in files.into_iter().enumerate().progress_with(bar.clone()) {
             let file = file?;
             bar.set_message(file.display().to_string());
-            PyModule::from_code(py, &read_to_string(&file)?, &file.display().to_string(), "__aoc__").tb()?;
+            PyModule::from_code(py, &read_to_string(&file)?, &file.display().to_string(), &format!("aoc_{i}")).tb()?;
         }
         Ok(())
     })?;
