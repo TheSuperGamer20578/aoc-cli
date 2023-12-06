@@ -23,6 +23,66 @@ async fn get_input<'s>(config: &Config, solution: &'s Solution, new_inputs: &RwL
     Ok((solution, input))
 }
 
+async fn handle_submit(config: &mut Config, solution: &Solution, identifier: &String, result: &String) -> Result<()> {
+    let submit_result = api::submit(config, solution.year, solution.day, solution.part, result).await?;
+    match &submit_result.result {
+        SubmitResult::Accepted => {
+            println("Solved", ActionType::Success, identifier);
+        }
+        SubmitResult::WrongAnswer(WrongAnswerReason::TooHigh) => {
+            println("Incorrect", ActionType::Failure, format!("{identifier}: {result}, too high"));
+        }
+        SubmitResult::WrongAnswer(WrongAnswerReason::TooLow) => {
+            println("Incorrect", ActionType::Failure, format!("{identifier}: {result}, too low"));
+        }
+        SubmitResult::WrongAnswer(WrongAnswerReason::None) => {
+            println("Incorrect", ActionType::Failure, format!("{identifier}: {result}"));
+        }
+        SubmitResult::TooSoon(retry_in) => {
+            println("Too Soon", ActionType::Error, format!("{identifier}: You have submitted too recently, please retry in {retry_in}"));
+        }
+        SubmitResult::Invalid => {
+            println("Invalid", ActionType::Error, format!("{identifier}: You don't seem to be solving the right level"));
+        }
+        SubmitResult::Unknown(message) => {
+            println("Unknown", ActionType::Error, format!("{identifier}: {message}"));
+        }
+    }
+    Ok(())
+}
+
+async fn handle_result(config: &mut Config, solution: &Solution, identifier: &String, result: &String, submit: bool, disable_submit_safety: bool) -> Result<()> {
+    match &config.day(solution.year, solution.day).part(solution.part).status {
+        PartStatus::Active { min, max, incorrect } => {
+            if incorrect.contains(result) && !disable_submit_safety {
+                println("Incorrect", ActionType::Failure, format!("{identifier}: {result}, already tried"));
+            } else if min.is_some() && !disable_submit_safety {
+                let min = min.unwrap();
+                if result.parse::<i64>()? < min {
+                    println("Incorrect", ActionType::Failure, format!("{identifier}: {result}, must be greater than {min}"));
+                }
+            } else if max.is_some() && !disable_submit_safety {
+                let max = max.unwrap();
+                if result.parse::<i64>()? > max {
+                    println("Incorrect", ActionType::Failure, format!("{identifier}: {result}, must be less than {max}"));
+                }
+            } else if submit && confirm(format!("Submit {result} for {identifier}?"))? {
+                handle_submit(config, solution, identifier, result).await?;
+            } else {
+                println("Run", ActionType::Success, format!("{identifier}: {result}"));
+            }
+        }
+        PartStatus::Solved(answer) => {
+            if answer.answer == *result {
+                println("Solved", ActionType::Success, identifier);
+            } else {
+                println("Incorrect", ActionType::Failure, format!("{identifier}: {result}, expected {}", answer.answer));
+            }
+        }
+    }
+    Ok(())
+}
+
 pub async fn run(config: &mut Config, year: Option<u16>, day: Option<u8>, part: Option<u8>, submit: bool, disable_submit_safety: bool) -> Result<()> {
     append_to_inittab!(aoc);
     prepare_freethreaded_python();
@@ -100,120 +160,18 @@ pub async fn run(config: &mut Config, year: Option<u16>, day: Option<u8>, part: 
             skips += 1;
             continue;
         };
-        match &config.day(solution.year, solution.day).part(solution.part).status {
-            PartStatus::Active { min, max, incorrect } => {
-                if incorrect.contains(&result) && !disable_submit_safety {
-                    println(
-                        "Incorrect",
-                        ActionType::Failure,
-                        format!("{identifier}: {result}, already tried")
-                    );
-                } else if min.is_some() && !disable_submit_safety {
-                    let min = min.unwrap();
-                    if result.parse::<i64>()? < min {
-                        println(
-                            "Incorrect",
-                            ActionType::Failure,
-                            format!("{identifier}: {result}, must be greater than {min}")
-                        );
-                    }
-                } else if max.is_some() && !disable_submit_safety {
-                    let max = max.unwrap();
-                    if result.parse::<i64>()? > max {
-                        println(
-                            "Incorrect",
-                            ActionType::Failure,
-                            format!("{identifier}: {result}, must be less than {max}")
-                        );
-                    }
-                } else if submit && confirm(format!("Submit {result} for {identifier}?"))? {
-                    let submit_result = api::submit(config, solution.year, solution.day, solution.part, &result).await?;
-                    match &submit_result.result {
-                        SubmitResult::Accepted => {
-                            println(
-                                "Solved",
-                                ActionType::Success,
-                                identifier
-                            );
-                        }
-                        SubmitResult::WrongAnswer(WrongAnswerReason::TooHigh) => {
-                            println(
-                                "Incorrect",
-                                ActionType::Failure,
-                                format!("{identifier}: {result}, too high")
-                            );
-                        }
-                        SubmitResult::WrongAnswer(WrongAnswerReason::TooLow) => {
-                            println(
-                                "Incorrect",
-                                ActionType::Failure,
-                                format!("{identifier}: {result}, too low")
-                            );
-                        }
-                        SubmitResult::WrongAnswer(WrongAnswerReason::None) => {
-                            println(
-                                "Incorrect",
-                                ActionType::Failure,
-                                format!("{identifier}: {result}")
-                            );
-                        }
-                        SubmitResult::TooSoon(retry_in) => {
-                            println(
-                                "Too Soon",
-                                ActionType::Error,
-                                format!("{identifier}: You have submitted too recently, please retry in {retry_in}")
-                            );
-                        }
-                        SubmitResult::Invalid => {
-                            println(
-                                "Invalid",
-                                ActionType::Error,
-                                format!("{identifier}: You don't seem to be solving the right level")
-                            );
-                        }
-                        SubmitResult::Unknown(message) => {
-                            println(
-                                "Unknown",
-                                ActionType::Error,
-                                format!("{identifier}: {message}")
-                            );
-                        }
-                    }
-                } else {
-                    println(
-                        "Run",
-                        ActionType::Success,
-                        format!("{identifier}: {result}")
-                    );
-                }
-            }
-            PartStatus::Solved(answer) => {
-                if answer.answer == result {
-                    println(
-                        "Solved",
-                        ActionType::Success,
-                        identifier
-                    );
-                } else {
-                    println(
-                        "Incorrect",
-                        ActionType::Failure,
-                        format!("{identifier}: {result}, expected {}", answer.answer)
-                    );
-                }
-            }
-        }
+        handle_result(config, solution, &identifier, &result, submit, disable_submit_safety).await?;
         bar.inc(1);
     }
     if import_failures > 0 {
-        warn!("{import_failures} solution{} failed to import", if import_failures != 1 {"s"} else {""});
+        warn!("{import_failures} solution{} failed to import", if import_failures == 1 {""} else {"s"});
     }
     if failures > 0 {
-        warn!("{failures} solution{} failed", if failures != 1 {"s"} else {""});
+        warn!("{failures} solution{} failed", if failures == 1 {""} else {"s"});
     }
     let skips = skips - failures;
     if skips > 0 {
-        warn!("{skips} solution{} were skipped", if skips != 1 {"s"} else {""});
+        warn!("{skips} solution{} were skipped", if skips == 1 {""} else {"s"});
     }
 
     Ok(())
