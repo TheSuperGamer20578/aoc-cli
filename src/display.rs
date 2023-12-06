@@ -189,7 +189,7 @@ impl Subscriber for Logger {
         println(
             event.metadata().level(),
             (*event.metadata().level()).into(),
-            message,
+            message.trim(),
         );
         #[cfg(debug_assertions)]
         PROGRESS.suspend(|| {

@@ -76,8 +76,8 @@ struct Part {
 #[derive(Debug, Serialize, Deserialize)]
 enum PartStatus {
     Active {
-        min: Option<u128>,
-        max: Option<u128>,
+        min: Option<i64>,
+        max: Option<i64>,
         incorrect: Vec<String>,
     },
     Solved(Submission),

@@ -110,7 +110,7 @@ pub async fn run(config: &mut Config, year: Option<u16>, day: Option<u8>, part: 
                     );
                 } else if min.is_some() && !disable_submit_safety {
                     let min = min.unwrap();
-                    if result.parse::<u128>()? < min {
+                    if result.parse::<i64>()? < min {
                         println(
                             "Incorrect",
                             ActionType::Failure,
@@ -119,7 +119,7 @@ pub async fn run(config: &mut Config, year: Option<u16>, day: Option<u8>, part: 
                     }
                 } else if max.is_some() && !disable_submit_safety {
                     let max = max.unwrap();
-                    if result.parse::<u128>()? > max {
+                    if result.parse::<i64>()? > max {
                         println(
                             "Incorrect",
                             ActionType::Failure,
