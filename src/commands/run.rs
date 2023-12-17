@@ -136,7 +136,7 @@ pub async fn run(config: &mut Config, year: Option<u16>, day: Option<u8>, part: 
     let mut failures = 0u16;
     let mut skips = 0u16;
     let bar = progress_bar("Running".to_string(), ActionType::Progress, solutions.len() as u64)?;
-    for (solution, input) in solutions {
+    for (solution, input) in &solutions {
         let (identifier, result) = Python::with_gil(|py| -> Result<_> {
             let identifier = format!("{} day {} part {} ({})", solution.year, solution.day, solution.part, solution.function.getattr(py, "__name__")?);
             bar.set_message(identifier.clone());
@@ -172,6 +172,9 @@ pub async fn run(config: &mut Config, year: Option<u16>, day: Option<u8>, part: 
     let skips = skips - failures;
     if skips > 0 {
         warn!("{skips} solution{} were skipped", if skips == 1 {""} else {"s"});
+    }
+    if solutions.is_empty() {
+        warn!("No solutions found");
     }
 
     Ok(())
