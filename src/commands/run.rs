@@ -56,16 +56,10 @@ async fn handle_result(config: &mut Config, solution: &Solution, identifier: &St
         PartStatus::Active { min, max, incorrect } => {
             if incorrect.contains(result) && !disable_submit_safety {
                 println("Incorrect", ActionType::Failure, format!("{identifier}: {result}, already tried"));
-            } else if min.is_some() && !disable_submit_safety {
-                let min = min.unwrap();
-                if result.parse::<i64>()? < min {
-                    println("Incorrect", ActionType::Failure, format!("{identifier}: {result}, must be greater than {min}"));
-                }
-            } else if max.is_some() && !disable_submit_safety {
-                let max = max.unwrap();
-                if result.parse::<i64>()? > max {
-                    println("Incorrect", ActionType::Failure, format!("{identifier}: {result}, must be less than {max}"));
-                }
+            } else if min.is_some() && !disable_submit_safety && result.parse::<i64>()? < min.unwrap() {
+                println("Incorrect", ActionType::Failure, format!("{identifier}: {result}, must be greater than {}", min.unwrap()));
+            } else if max.is_some() && !disable_submit_safety && result.parse::<i64>()? > max.unwrap() {
+                println("Incorrect", ActionType::Failure, format!("{identifier}: {result}, must be less than {}", max.unwrap()));
             } else if submit && confirm(format!("Submit {result} for {identifier}?"))? {
                 handle_submit(config, solution, identifier, result).await?;
             } else {
