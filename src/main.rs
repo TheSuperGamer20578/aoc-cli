@@ -139,6 +139,17 @@ enum Command {
         /// The part to create a new solution for
         part: Option<u8>,
     },
+    /// Manually sets a solution
+    SetSolution {
+        /// The year
+        year: u16,
+        /// The day
+        day: u8,
+        /// The part to set a solution for
+        part: u8,
+        /// The solution, leave blank to reset
+        answer: Option<String>,
+    },
 }
 
 #[tokio::main]
@@ -185,6 +196,7 @@ async fn _main() -> Result<()> {
             day,
             part
         } => commands::new(base_dir, template, &file, year, day, part).await?,
+        Command::SetSolution {year, day, part, answer} => commands::set_solution(&mut config, year, day, part, answer),
     }
     confy::store(env!("CARGO_CRATE_NAME"), None, config)?;
     Ok(())
