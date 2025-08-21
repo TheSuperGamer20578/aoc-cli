@@ -1,3 +1,12 @@
+> [!IMPORTANT]
+> # Advent of Code CLI has moved to GitLab
+> The repository can now be accessed at <https://gitlab.com/sgme/aoc-cli/>.
+
+---
+
+<details>
+<summary>Original README</summary>
+
 # AoC CLI
 A CLI for running Advent of Code solutions.
 
@@ -109,3 +118,5 @@ def part1(data: str):
 def part2(data: str):
     ...
 ```
+
+</details>
